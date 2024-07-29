@@ -1,0 +1,22 @@
+1/Update apt:
+sudo apt-get update
+
+sudo apt-get install \
+    ca-certificates \
+    curl \
+    gnupg \
+    lsb-release
+2/Add new source-list to apt:
+echo \
+  "deb [trusted=yes] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+apt-get update
+
+3/Install docker:
+apt-get install docker-ce docker-ce-cli containerd.io
+
+4/Test docker:
+docker run hello-world
+
+
