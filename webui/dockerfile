@@ -1,0 +1,17 @@
+# Load python package moi nhat tren docker hub
+FROM python:3.9-slim
+
+# Chon working directory cho container
+WORKDIR /usr/src/app
+
+# Copy requirements file vao trong container
+COPY requirements.txt ./
+
+# Cai` cac' goi' phu thuoc cho container
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy code python vao trong container
+COPY webui.py .
+
+# chay web server sau khi container duoc khoi dong
+CMD ["python", "webui.py"]

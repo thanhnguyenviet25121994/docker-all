@@ -1,0 +1,114 @@
+1/ docker practice:
+ <Build image flask python sau>:
+- Tạo thư mục với tên webui:
+mkdir -p webui
+cd webui
+- Tạo 1 file webui.py với nội dung sau:
+cat << EOF > webui.py
+from flask import Flask
+import os
+import psycopg2
+
+app = Flask(__name__)
+
+DATABASE_URL = os.getenv('DATABASE_URL')
+
+def get_db_connection():
+    conn = psycopg2.connect(DATABASE_URL)
+    return conn
+
+@app.route('/')
+def index():
+    try: 
+     conn = get_db_connection()
+     cur = conn.cursor()
+     cur.execute('SELECT version();')
+     db_version = cur.fetchone()
+     cur.close()
+     conn.close()
+     print("Chao mung den voi webserver!")
+     print("Ket noi database thanh cong!")
+     return f'Database version: {db_version}'
+    except:
+     return "Chao mung den voi webserver!"
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0')
+EOF
+
+- Taọ file requirements.txt với nội dung sau:
+cat << EOF > requirements.txt 
+Flask
+psycopg2-binary
+EOF
+
+- Tạo file dockerfile với nội dung sau:
+cat << EOF > dockerfile
+# Load python package moi nhat tren docker hub
+FROM python:3.9-slim
+
+# Chon working directory cho container
+WORKDIR /usr/src/app
+
+# Copy requirements file vao trong container
+COPY requirements.txt ./
+
+# Cai` cac' goi' phu thuoc cho container
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy code python vao trong container
+COPY webui.py .
+
+# chay web server sau khi container duoc khoi dong
+CMD ["python", "webui.py"]
+
+EOF
+
+
+- Build image webui với lệnh sau:
+docker build -t webui:1.0 .
+
+- Kiểm tra image vừa build được với lệnh: docker images
+Ket qua mau~: 
+----
+root@ubuntu-test-01:/home/sf/docker-all/webui# docker images
+REPOSITORY    TAG       IMAGE ID       CREATED         SIZE
+webui         1.0       f093ef4a885c   8 seconds ago   143MB
+<none>        <none>    46561428bdb5   9 minutes ago   143MB
+hello-world   latest    d2c94e258dcb   15 months ago   13.3kB
+----
+
+- Push image lên docker hub repo: (bước này có the? thực hiện hoặc bo qua)
++ Tạo 1 tài khoan docker hub: search google "create docker hub account" và làm theo hướng dẫn
++ Tạo 1 repo mới: vd: test
++ Gõ lệnh docker login và đien username và password cua tài khoan docker hub vừa tạo
++ Gõ lệnh docker tag webui:1.0 <docker_hub_username>/test:tag
+Ví dụ: docker tag webui:1.0 thanhnv25121994/test:webui_1.0
++ Push image lên repo: docker push thanhnv25121994/test:webui_1.0
+
+Ket qua mau~: 
+---
+root@ubuntu-test-01:/home/sf/docker-all/webui# docker push thanhnv25121994/test:webui_1.0
+The push refers to repository [docker.io/thanhnv25121994/test]
+9f9b90b8b06e: Pushed 
+6d8b23512449: Pushed 
+08b264d356b4: Pushed 
+55e154953e80: Pushed 
+337337a89bc6: Mounted from library/python 
+6e1edc42bbcc: Mounted from library/python 
+da6d0db38dea: Mounted from library/python 
+4e4410552731: Mounted from library/python 
+e0781bc8667f: Mounted from library/python 
+webui_1.0: digest: sha256:6f0a69867ff94857fd2b021b8bca1734adb4070b5e7b2cbde41ef35d2c9f24b9 size: 2202
+---
+
+- Chạy lệnh sau đe chạy container webserver: 
+docker run -d -p 5000:5000 webui:1.0
+
+- Xem webui vừa tạo với lệnh sau: curl localhost:5000 
+
+Ket qua mau: 
+---
+root@ubuntu-test-01:/home/sf/docker-all/webui# curl localhost:5000
+Chao mung den voi webserver!
+---
