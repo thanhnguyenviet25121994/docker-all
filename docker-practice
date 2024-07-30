@@ -3,7 +3,8 @@
 - Tạo thư mục với tên webui:
 mkdir -p webui
 cd webui
-- Tạo 1 file webui.py với nội dung sau:
+- Tạo 1 file webui.py với lenh sau:
+
 cat << EOF > webui.py
 from flask import Flask
 import os
@@ -26,9 +27,11 @@ def index():
      db_version = cur.fetchone()
      cur.close()
      conn.close()
-     print("Chao mung den voi webserver!")
-     print("Ket noi database thanh cong!")
-     return f'Database version: {db_version}'
+     response = f"""
+        <h1>Chao mung den voi docker webserver</h1>
+        <p>Database version: {db_version}</p>
+        """
+     return response
     except:
      return "Chao mung den voi webserver!"
 
@@ -36,13 +39,15 @@ if __name__ == '__main__':
     app.run(host='0.0.0.0')
 EOF
 
-- Taọ file requirements.txt với nội dung sau:
+- Taọ file requirements.txt với lenh sau:
+
 cat << EOF > requirements.txt 
 Flask
 psycopg2-binary
 EOF
 
-- Tạo file dockerfile với nội dung sau:
+- Tạo file dockerfile với lenh sau:
+
 cat << EOF > dockerfile
 # Load python package moi nhat tren docker hub
 FROM python:3.9-slim
@@ -64,8 +69,7 @@ CMD ["python", "webui.py"]
 
 EOF
 
-
-- Build image webui với lệnh sau:
+- Build image webui với lệnh sau: ( chu y copy ca dau .)
 docker build -t webui:1.0 .
 
 - Kiem tra image vừa build được với lệnh: docker images
@@ -78,10 +82,10 @@ webui         1.0       f093ef4a885c   8 seconds ago   143MB
 hello-world   latest    d2c94e258dcb   15 months ago   13.3kB
 ----
 
-- Push image lên docker hub repo: (bước này có the thực hiện hoặc bo qua)
-+ Tạo 1 tài khoan docker hub: search google "create docker hub account" và làm theo hướng dẫn
+- Push image lên docker hub repo: (bước này có thể thực hiện hoặc bỏ qua)
++ Tạo 1 tài khoản docker hub: search google "create docker hub account" và làm theo hướng dẫn
 + Tạo 1 repo mới: vd: test
-+ Gõ lệnh docker login và đien username và password cua tài khoan docker hub vừa tạo
++ Gõ lệnh docker login và điền username và password cua tài khoan docker hub vừa tạo
 + Gõ lệnh docker tag webui:1.0 <docker_hub_username>/test:tag
 Ví dụ: docker tag webui:1.0 thanhnv25121994/test:webui_1.0
 + Push image lên repo: docker push thanhnv25121994/test:webui_1.0
@@ -102,7 +106,7 @@ e0781bc8667f: Mounted from library/python
 webui_1.0: digest: sha256:6f0a69867ff94857fd2b021b8bca1734adb4070b5e7b2cbde41ef35d2c9f24b9 size: 2202
 ---
 
-- Chạy lệnh sau đe chạy container webserver: 
+- Chạy lệnh sau de khoi dong container webserver: 
 docker run -d -p 5000:5000 webui:1.0
 
 - Xem webui vừa tạo với lệnh sau: curl localhost:5000 
@@ -112,5 +116,107 @@ Ket qua mau:
 root@ubuntu-test-01:/home/sf/docker-all/webui# curl localhost:5000
 Chao mung den voi webserver!
 ---
+
+
+2/ Docker-compose:
+- Hoàn thiện toàn bo các bước o mục 1/ docker practice phía trên
+- Chạy lệnh sau đe cài docker-compse: 
+sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+cp /usr/local/bin/docker-compose /usr/bin/docker-compose
+docker-compose --version
+
+- Tạo file docker-compose.yaml với command sau:
+
+cat <<EOF> docker-compose.yaml
+version: '3.8'
+
+services:
+  webui:
+    image: webui:1.0
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@db:5432/mydatabase
+    depends_on:
+      - db
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - webui
+
+  db:
+    image: postgres:latest
+    environment:
+      - POSTGRES_DB=mydatabase
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+EOF
+
+- Tạo file nginx.conf với command sau: 
+
+cat <<EOF>nginx.conf
+events {
+    worker_connections  1024;
+}
+
+http {
+    include       /etc/nginx/mime.types;  # Include MIME type mappings
+    default_type  application/octet-stream;
+
+    # Basic settings
+    sendfile        on;
+    tcp_nopush      on;
+    tcp_nodelay     on;
+    keepalive_timeout  65;
+    gzip            on;
+
+    server {
+        listen 80;
+        server_name _;  # Default server name
+
+        location / {
+            proxy_pass http://webui:5000;  # Forward requests to the webui service on port 5000
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+        
+    }
+}
+EOF
+
+- Chay lenh sau de khoi dong docker-compose stack:
+docker-compose up -d 
+
+- Chay lenh sau de kiem tra: curl localhost:80
+
+ket qua mau
+---
+root@ubuntu-test-01:/home/sf# curl localhost:80
+
+       <h1>Chao mung den voi docker webserver</h1>
+        <p>Database version: ('PostgreSQL 16.3 (Debian 16.3-1.pgdg120+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 12.2.0-14) 12.2.0, 64-bit',)</p>
+---
+
+- Chay lenh sau de kiem tra docker-compose:
+docker-compose ps
+
+ket qua mau
+---
+root@ubuntu-test-01:/home/sf# docker-compose ps
+   Name                 Command               State                Ports              
+--------------------------------------------------------------------------------------
+sf_db_1      docker-entrypoint.sh postgres    Up      5432/tcp                        
+sf_nginx_1   /docker-entrypoint.sh ngin ...   Up      0.0.0.0:80->80/tcp,:::80->80/tcp
+sf_webui_1   python webui.py		      Up
+---
+
+Khi thay ca 3 server sf_db_1,sf_nginx_1 và sf_webui_1 đeu có state là Up có nghia la thanh cong
+
 
 
