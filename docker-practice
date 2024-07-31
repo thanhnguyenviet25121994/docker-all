@@ -49,24 +49,23 @@ EOF
 - Tạo file dockerfile với lenh sau:
 
 cat << EOF > dockerfile
-# Load python package moi nhat tren docker hub
+# Load the latest Python package from Docker Hub
 FROM python:3.9-slim
 
-# Chon working directory cho container
+# Set working directory for the container
 WORKDIR /usr/src/app
 
-# Copy requirements file vao trong container
+# Copy requirements file into the container
 COPY requirements.txt ./
 
-# Cai` cac' goi' phu thuoc cho container
+# Install dependencies for the container
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy code python vao trong container
+# Copy Python code into the container
 COPY webui.py .
 
-# chay web server sau khi container duoc khoi dong
+# Run web server when the container starts
 CMD ["python", "webui.py"]
-
 EOF
 
 - Build image webui với lệnh sau: ( chu y copy ca dau .)
